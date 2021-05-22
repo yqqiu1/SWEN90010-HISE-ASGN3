@@ -6,92 +6,98 @@ with MyCommandLine;
 with MyString;
 with MyStringTokeniser;
 with PIN;
+with SimpleStack;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
-
+with Ada.Task_Identification;  use Ada.Task_Identification;
 with Ada.Long_Long_Integer_Text_IO;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
 procedure Main is
-   DB : VariableStore.Database;
-   V1 : VariableStore.Variable := VariableStore.From_String("Var1");
-   PIN1  : PIN.PIN := PIN.From_String("1234");
+   DB  : VariableStore.Database;
+   package MyStack is new SimpleStack(512,Integer,0);
+   MS  : MyStack.SimpleStack;
+   
+   --V1 : VariableStore.Variable := VariableStore.From_String("Var1");
+   
+   type LockState is (Locked, Unlocked);
+   L :LockState := Unlocked;
+   PIN1 : PIN.PIN := PIN.From_String("1234");
    PIN2  : PIN.PIN := PIN.From_String("1234");
-   package Lines is new MyString(Max_MyString_Length => 2048);
+   package Lines is new MyString(Max_MyString_Length => 2049);
    S  : Lines.MyString;
+   
+   FlagValidInput: Boolean:= True;
+   
 begin
-
-   Put(MyCommandLine.Command_Name); Put_Line(" is running!");
-   Put("I was invoked with "); Put(MyCommandLine.Argument_Count,0); Put_Line(" arguments.");
-   for Arg in 1..MyCommandLine.Argument_Count loop
-      Put("Argument "); Put(Arg,0); Put(": """);
-      Put(MyCommandLine.Argument(Arg)); Put_Line("""");
-   end loop;
-
-   VariableStore.Init(DB);
-   Put_Line("Adding an entry to the database");
-   VariableStore.Put(DB,V1,10);
-
-   Put_Line("Reading the entry:");
-   Put(VariableStore.Get(DB,V1));
-   New_Line;
    
-   Put_Line("Printing out the database: ");
-   VariableStore.Print(DB);
-   
-   Put_Line("Removing the entry");
-   VariableStore.Remove(DB,V1);
-   If VariableStore.Has_Variable(DB,V1) then
-      Put_Line("Entry still present! It is: ");
-      Put(VariableStore.Get(DB,V1));
-      New_Line;
-   else
-      Put_Line("Entry successfully removed");
-   end if;
-
-   Put_Line("Reading a line of input. Enter some text (at most 3 tokens): ");
-   Lines.Get_Line(S);
-
-   Put_Line("Splitting the text into at most 5 tokens");
-   declare
-      T : MyStringTokeniser.TokenArray(1..5) := (others => (Start => 1, Length => 0));
-      NumTokens : Natural;
-   begin
-      MyStringTokeniser.Tokenise(Lines.To_String(S),T,NumTokens);
-      Put("You entered "); Put(NumTokens); Put_Line(" tokens.");
-      for I in 1..NumTokens loop
-         declare
-            TokStr : String := Lines.To_String(Lines.Substring(S,T(I).Start,T(I).Start+T(I).Length-1));
-         begin
-            Put("Token "); Put(I); Put(" is: """);
-            Put(TokStr); Put_Line("""");
-         end;
-      end loop;
-      if NumTokens > 3 then
-         Put_Line("You entered too many tokens --- I said at most 3");
-      end if;
-   end;
-
-   If PIN."="(PIN1,PIN2) then
-      Put_Line("The two PINs are equal, as expected.");
-   end if;
-   
-   declare
-      Smallest_Integer : Integer := StringToInteger.From_String("-2147483648");
-      R : Long_Long_Integer := 
-        Long_Long_Integer(Smallest_Integer) * Long_Long_Integer(Smallest_Integer);
-   begin
-      Put_Line("This is -(2 ** 32) (where ** is exponentiation) :");
-      Put(Smallest_Integer); New_Line;
+   if MyCommandLine.Argument_Count = 1 then
+      if MyCommandLine.Argument(1)'Length = 4 
+        and (for all I in MyCommandLine.Argument(1)'Range => 
+                 MyCommandLine.Argument(1)(I) >= '0' 
+             and MyCommandLine.Argument(1)(I) <= '9') then
       
-      if R < Long_Long_Integer(Integer'First) or
-         R > Long_Long_Integer(Integer'Last) then
-         Put_Line("Overflow would occur when trying to compute the square of this number");
-      end if;
-         
-   end;
-   Put_Line("2 ** 32 is too big to fit into an Integer...");
-   Put_Line("Hence when trying to parse it from a string, it is treated as 0:");
-   Put(StringToInteger.From_String("2147483648")); New_Line;
+         PIN1 := PIN.From_String(MyCommandLine.Argument(1));
+         L    := Locked;
    
-      
+         while FlagValidInput loop
+            declare
+               T         : MyStringTokeniser.TokenArray(1..5) := (others => (Start => 1, Length => 0));
+               NumTokens : Natural;
+            begin
+               if L = Locked then Put("locked>");
+               else put("unlocked>");
+               end if;
+               Lines.Get_Line(S);
+               if Lines.length(S) > 2048 then
+                  Put_Line("Invalid Input : Get an input line longer than 2048 characters.");
+                  FlagValidInput := False;
+               else
+                  MyStringTokeniser.Tokenise(Lines.To_String(S),T,NumTokens);
+                  if NumTokens > 0 then
+                     declare
+                        OP  : String := Lines.To_String(Lines.Substring(S,T(1).Start,T(1).Start+T(1).Length-1));
+                     begin
+                        if OP = "lock" then
+                           
+                           -- for each 1 
+                           -- check lock state
+                           -- check num of tokens
+                           -- check pre conditions for each command
+                           -- body
+                           
+                           Put_Line("TO DO: lock");
+                        elsif OP = "unlock" then
+                           Put_Line("TO DO: unlock");
+                        elsif OP = "push" then
+                           Put_Line("TO DO: push");
+                        elsif OP = "pop" then
+                           Put_Line("TO DO: pop");
+                        elsif OP = "+" then
+                           Put_Line("TO DO: +");
+                        elsif OP = "-" then
+                           Put_Line("TO DO: -");
+                        elsif OP = "*" then
+                           Put_Line("TO DO: *");
+                        elsif OP = "/" then
+                           Put_Line("TO DO: /");
+                        elsif OP = "store" then
+                           Put_Line("TO DO: store");
+                        elsif OP = "load" then
+                           Put_Line("TO DO: load");
+                        elsif OP = "list" then
+                           Put_Line("TO DO: list");
+                        elsif OP = "remove" then
+                           Put_Line("TO DO: remove");
+                        else
+                           Put("Invalid Input : No such command: ");Put(OP);Put_Line(".");
+                           FlagValidInput := False;
+                        end if;
+                     end;
+                  end if;
+               end if;
+            end;
+         end loop;
+      end if;
+   end if;
 end Main;
