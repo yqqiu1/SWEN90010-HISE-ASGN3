@@ -140,17 +140,66 @@ begin
                         
                         
                      elsif GetToken(1) = "push" then
-                        Put_Line("TO DO: push");
+                        
+                        if NumTokens = 2 then -- check valid NumTokens
+                           if L = Unlocked then -- check lock state
+                              if MyStack.Size(MS) < Max_Stack_Size then -- check precondition
+                                 MyStack.Push(MS, StringToInteger.From_String(GetToken(2)));
+                              else
+                                 Put_Line("Stack Full.");
+                              end if;
+                           end if; --otherwise: locked state, do nothing
+                        else
+                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                        end if;
                         
                         
                         
                      elsif GetToken(1) = "pop" then
-                        Put_Line("TO DO: pop");
+                        
+                        if NumTokens = 1 then -- check valid NumTokens
+                           if L = Unlocked then -- check lock state
+                              if MyStack.Size(MS) > 0 then -- check precondition
+                                 declare
+                                    outputNumber : Integer;
+                                 begin
+                                    MyStack.Pop(MS, outputNumber);
+                                    Put_Line(outputNumber'Image);
+                                 end;
+                              else
+                                 Put_Line("Stack Empty.");
+                              end if;
+                           end if; --otherwise: locked state, do nothing
+                        else
+                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                        end if;
                         
                         
                         
                      elsif GetToken(1) = "+" then
-                        Put_Line("TO DO: +");
+                        
+                        if NumTokens = 1 then -- check valid NumTokens
+                           if L = Unlocked then -- check lock state
+                              if MyStack.Size(MS) > 1 then -- check precondition
+                                 declare
+                                    num1 : Integer;
+                                    num2 : Integer;
+                                 begin
+                                    MyStack.Pop(MS, num1);
+                                    MyStack.Pop(MS, num2);
+                                    --TODO: check precondition for + operation
+                                    --and the + operation
+                                    --and push the result back to the stack
+                                    --which could be something like
+                                    --MyStack.Push(MS, plus(num1,num2));
+                                 end;
+                              else
+                                 Put_Line("Not enough variables for caculation.");
+                              end if;
+                           end if; --otherwise: locked state, do nothing
+                        else
+                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                        end if;
                         
                         
                         
