@@ -64,7 +64,7 @@ begin
          while not FlagInvalidInput loop
             declare
                
-               T         : MyStringTokeniser.TokenArray(1..2) := (others => (Start => 1, Length => 0));
+               T         : MyStringTokeniser.TokenArray(1..3) := (others => (Start => 1, Length => 0));
                NumTokens : Natural;
                
                function GetToken ( N:Integer ) return String is
