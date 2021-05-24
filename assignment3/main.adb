@@ -13,87 +13,185 @@ with Ada.Task_Identification;  use Ada.Task_Identification;
 with Ada.Long_Long_Integer_Text_IO;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
+
+
 procedure Main is
+   
    DB  : VariableStore.Database;
-   package MyStack is new SimpleStack(512,Integer,0);
+   
+   
+   Max_Stack_Size : Integer := 512;
+   package MyStack is new SimpleStack(Max_Stack_Size,Integer,0);
    MS  : MyStack.SimpleStack;
    
-   --V1 : VariableStore.Variable := VariableStore.From_String("Var1");
+   
+   Max_Command_Length : Integer := 2048;
+   package Lines is new MyString(Max_MyString_Length => Max_Command_Length+1);
+   S  : Lines.MyString;
+   
+   
    
    type LockState is (Locked, Unlocked);
    L :LockState := Unlocked;
    PIN1 : PIN.PIN := PIN.From_String("1234");
-   PIN2  : PIN.PIN := PIN.From_String("1234");
-   package Lines is new MyString(Max_MyString_Length => 2049);
-   S  : Lines.MyString;
    
-   FlagValidInput: Boolean:= True;
+   function IsPin (S:String) return Boolean is
+   begin
+      return S'Length = 4 
+        and (for all I in S'Range => 
+                 S(I) >= '0' and S(I) <= '9');
+   end IsPin;
+     
+   
+   FlagInvalidInput: Boolean:= False;
+   
+   procedure RaiseInvalidFlag(S:String) is
+   begin
+      FlagInvalidInput:= True;
+      Put_Line(S);
+   end;
    
 begin
    
    if MyCommandLine.Argument_Count = 1 then
-      if MyCommandLine.Argument(1)'Length = 4 
-        and (for all I in MyCommandLine.Argument(1)'Range => 
-                 MyCommandLine.Argument(1)(I) >= '0' 
-             and MyCommandLine.Argument(1)(I) <= '9') then
+      if IsPin(MyCommandLine.Argument(1)) then
       
          PIN1 := PIN.From_String(MyCommandLine.Argument(1));
          L    := Locked;
    
-         while FlagValidInput loop
+         
+         
+         while not FlagInvalidInput loop
             declare
-               T         : MyStringTokeniser.TokenArray(1..5) := (others => (Start => 1, Length => 0));
+               
+               T         : MyStringTokeniser.TokenArray(1..2) := (others => (Start => 1, Length => 0));
                NumTokens : Natural;
+               
+               function GetToken ( N:Integer ) return String is
+               begin
+                  MyStringTokeniser.Tokenise(Lines.To_String(S),T,NumTokens);
+                  if N<=NumTokens then
+                     return Lines.To_String(Lines.Substring(S,T(N).Start,T(N).Start+T(N).Length-1));
+                  else return "";
+                  end if;
+               end GetToken;
+               
             begin
+               
                if L = Locked then Put("locked>");
                else put("unlocked>");
                end if;
+               
                Lines.Get_Line(S);
-               if Lines.length(S) > 2048 then
-                  Put_Line("Invalid Input : Get an input line longer than 2048 characters.");
-                  FlagValidInput := False;
+               
+               if Lines.length(S) > Max_Command_Length then
+                  
+                  RaiseInvalidFlag("Invalid Input : Get an input line longer than" & Integer'Image(Max_Command_Length) & " characters.");
+                  
                else
+                  
                   MyStringTokeniser.Tokenise(Lines.To_String(S),T,NumTokens);
+                  
                   if NumTokens > 0 then
-                     declare
-                        OP  : String := Lines.To_String(Lines.Substring(S,T(1).Start,T(1).Start+T(1).Length-1));
-                     begin
-                        if OP = "lock" then
-                           
-                           -- for each 1 
-                           -- check lock state
-                           -- check num of tokens
-                           -- check pre conditions for each command
-                           -- body
-                           
-                           Put_Line("TO DO: lock");
-                        elsif OP = "unlock" then
-                           Put_Line("TO DO: unlock");
-                        elsif OP = "push" then
-                           Put_Line("TO DO: push");
-                        elsif OP = "pop" then
-                           Put_Line("TO DO: pop");
-                        elsif OP = "+" then
-                           Put_Line("TO DO: +");
-                        elsif OP = "-" then
-                           Put_Line("TO DO: -");
-                        elsif OP = "*" then
-                           Put_Line("TO DO: *");
-                        elsif OP = "/" then
-                           Put_Line("TO DO: /");
-                        elsif OP = "store" then
-                           Put_Line("TO DO: store");
-                        elsif OP = "load" then
-                           Put_Line("TO DO: load");
-                        elsif OP = "list" then
-                           Put_Line("TO DO: list");
-                        elsif OP = "remove" then
-                           Put_Line("TO DO: remove");
+                     -- for each operation 
+                     -- check valid (numtokens and variable type)
+                     -- check lock state
+                     -- check operation pre condition
+                     -- body
+                        
+                     if GetToken(1) = "lock" then
+                                                   
+                        if NumTokens = 2 then -- check valid NumTokens
+                           if IsPin(GetToken(2)) then -- check valid var: if is a pin
+                              if L = Unlocked then -- check lock state & precondition
+                                 
+                                 --body
+                                 PIN1 := PIN.From_String(GetToken(2));
+                                 L    := Locked;
+                                 
+                              end if; --otherwise do nothing
+                           else
+                              RaiseInvalidFlag("Invalid Input : Not a pin.");
+                           end if;
                         else
-                           Put("Invalid Input : No such command: ");Put(OP);Put_Line(".");
-                           FlagValidInput := False;
+                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
                         end if;
-                     end;
+                             
+                        
+                        
+                     elsif GetToken(1) = "unlock" then
+                           
+                        if NumTokens = 2 then -- check valid NumTokens
+                           if IsPin(GetToken(2)) then -- check valid var: if is a pin 
+                              if L = Locked and 
+                                PIN."="(PIN1,PIN.From_String(GetToken(2)))  then -- check lock state & precondition
+                                 
+                                 --body
+                                 L:= Unlocked;
+                                 
+                              end if; --otherwise: the pin is not correct, do nothing.
+                           else
+                              RaiseInvalidFlag("Invalid Input : Not a pin.");
+                           end if;
+                        else
+                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                        end if;
+                        
+                        
+                        
+                     elsif GetToken(1) = "push" then
+                        Put_Line("TO DO: push");
+                        
+                        
+                        
+                     elsif GetToken(1) = "pop" then
+                        Put_Line("TO DO: pop");
+                        
+                        
+                        
+                     elsif GetToken(1) = "+" then
+                        Put_Line("TO DO: +");
+                        
+                        
+                        
+                     elsif GetToken(1) = "-" then
+                        Put_Line("TO DO: -");
+                        
+                        
+                        
+                     elsif GetToken(1) = "*" then
+                        Put_Line("TO DO: *");
+                        
+                        
+                        
+                     elsif GetToken(1) = "/" then
+                        Put_Line("TO DO: /");
+                        
+                        
+                        
+                     elsif GetToken(1) = "store" then
+                        Put_Line("TO DO: store");
+                        
+                        
+                        
+                     elsif GetToken(1) = "load" then
+                        Put_Line("TO DO: load");
+                        
+                        
+                        
+                     elsif GetToken(1) = "list" then
+                        Put_Line("TO DO: list");
+                        
+                        
+                        
+                     elsif GetToken(1) = "remove" then
+                        Put_Line("TO DO: remove");
+                        
+                        
+                        
+                     else
+                        RaiseInvalidFlag("Invalid Input : No such command: " & getToken(1) & ".");
+                     end if;
                   end if;
                end if;
             end;
