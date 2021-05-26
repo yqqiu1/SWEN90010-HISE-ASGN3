@@ -14,12 +14,20 @@ package body MyStringTokeniser with SPARK_Mode is
       end if;
       Index := S'First;
       while OutIndex <= Tokens'Last and Index <= S'Last and Count < Tokens'Length loop
+         
+         -- the two Loop_Invariant makes sure the post condition of the procedure always stand
+         --
+         -- where the first Loop_Invariant makes sure every token index inside the range of the String (the input line)
+         -- the second Loop_Invariant makes sure the OutIndex always index to the last token
+         -- which will only allow the last token is being modified
+         -- avoid unexpected changes to the places (e.g. other tokens) that shouldn’t be modified
+         
          pragma Loop_Invariant
            (for all J in Tokens'First..OutIndex-1 =>
               (Tokens(J).Start >= S'First and
                    Tokens(J).Length > 0) and then
             Tokens(J).Length-1 <= S'Last - Tokens(J).Start);
-
+         
          pragma Loop_Invariant (OutIndex = Tokens'First + Count);
 
          -- look for start of next token
