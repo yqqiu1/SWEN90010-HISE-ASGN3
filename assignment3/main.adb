@@ -64,7 +64,10 @@ begin
    MyStack.Init(MS);
    
    if (if MyCommandLine.Argument_Count = 1 then 
-          IsPin(MyCommandLine.Argument(1))) then
+          MyCommandLine.Argument(1)'Length = 4 
+       and (for all I in MyCommandLine.Argument(1)'Range => 
+              MyCommandLine.Argument(1)(I) >= '0' 
+            and MyCommandLine.Argument(1)(I) <= '9')) then
       
       MasterPin := PIN.From_String(MyCommandLine.Argument(1));
       L         := Locked;
@@ -108,7 +111,7 @@ begin
                   if Lines.To_String(OP) = "lock" then
                      
                      -- check valid                   
-                     if (if NumTokens = 2 then IsNumber(Lines.To_String(VAR))) then 
+                     if (if NumTokens = 2 then IsNumber(Lines.To_String(VAR)) else False) then 
                         
                         -- check precondition
                         if L = Unlocked and IsPin(Lines.To_String(VAR)) then 
@@ -128,7 +131,8 @@ begin
                   elsif Lines.To_String(OP) = "unlock" then
                      
                      -- check valid 
-                     if (if NumTokens = 2 then IsNumber(Lines.To_String(VAR))) then 
+                     if (if NumTokens = 2 then IsNumber(Lines.To_String(VAR))
+                        else False) then 
                         
                         -- check precondition
                         if L = Locked and IsPin(Lines.To_String(VAR)) then 
@@ -237,8 +241,8 @@ begin
                                  MyStack.Pop(MS, num1);
                                  MyStack.Pop(MS, num2);
                                     
-                                 if (if num1 >= 0 then num2 <= Integer'First + num1
-                                     else num2 >= Integer'Last + num1) then
+                                 if (if num2 >= 0 then num1 >= Integer'First + num2
+                                     else num1 <= Integer'Last + num2) then
                                           
                                     --body of the operation
                                     MyStack.Push(MS, num1 - num2);
@@ -272,8 +276,8 @@ begin
                                     
                                  if (if num1 = 0 then True
                                      elsif num1 = -1 then num2 /= Integer'First
-                                     elsif num1 > 0 then (num2 >= Integer'First / num1 and num2 <= Integer'Last / num1)
-                                     else (num2 >= Integer'Last / num1 and num2 <= Integer'First / num1)) then
+                                     elsif num1 > 0 then ((num2 >= Integer'First / num1) and (num2 <= Integer'Last / num1))
+                                     else ((num2 >= Integer'Last / num1) and (num2 <= Integer'First / num1))) then
                                        
                                     --body of the operation
                                     MyStack.Push(MS, num1 * num2);
