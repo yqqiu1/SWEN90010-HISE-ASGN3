@@ -20,6 +20,14 @@ package MyStringTokeniser with SPARK_Mode is
           (Tokens(Index).Start >= S'First and
           Tokens(Index).Length > 0) and then
             Tokens(Index).Length-1 <= S'Last - Tokens(Index).Start);
+   
+   -- The Postcondition part means that
+   -- The number of tokens is not exceeding the max space/range of the token array
+   -- and every token is inside the string S
+   --
+   -- it is necessary because the post conditions can be used to verify pre conditions
+   -- of the MyString.Substring function when extract token strings out from the
+   -- input line.
 
 
 end MyStringTokeniser;
