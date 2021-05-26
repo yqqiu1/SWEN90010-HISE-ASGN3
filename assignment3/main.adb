@@ -63,7 +63,8 @@ begin
    VariableStore.Init(DB);
    MyStack.Init(MS);
    
-   if MyCommandLine.Argument_Count = 1 then 
+   if (if MyCommandLine.Argument_Count = 1 then MyCommandLine.Argument(1)'Length <=4
+       else False) then 
       
       InputLine := Lines.From_String(MyCommandLine.Argument(1));
       
@@ -115,10 +116,13 @@ begin
                            -- check precondition
                            if L = Unlocked and IsPin(Lines.To_String(VAR)) then 
                                  
+                              pragma Assert(L=Unlocked);
                               --body
                               MasterPin := PIN.From_String(Lines.To_String(VAR));
                               L    := Locked;
                                  
+                              pragma Assert(PIN."="(MasterPin,PIN.From_String(Lines.To_String(VAR))));
+                              
                            end if; 
                         
                         else
@@ -136,6 +140,7 @@ begin
                            -- check precondition
                            if L = Locked and IsPin(Lines.To_String(VAR)) then 
                                  
+                              pragma Assert(L=Locked);
                               --body
                               if PIN."="(MasterPin,PIN.From_String(Lines.To_String(VAR))) then 
                                  L:= Unlocked;
@@ -157,6 +162,7 @@ begin
                            -- check precondition
                            if L = Unlocked and MyStack.Size(MS) < 512 then 
                            
+                              pragma Assert(L=Unlocked);
                               --body
                               MyStack.Push(MS, StringToInteger.From_String(Lines.To_String(VAR)));
                            
@@ -180,8 +186,11 @@ begin
                               declare
                                  outputNumber : Integer;
                               begin
+                                 
+                                 pragma Assert(L=Unlocked);
                                  MyStack.Pop(MS, outputNumber);
                                  Put_Line(outputNumber'Image);
+                                 
                               end;
                            else
                               if not (L = Unlocked) then Put_Line("Stack Empty.");end if; 
@@ -210,6 +219,7 @@ begin
                                     if (if num1 >= 0 then num2 <= Integer'Last - num1
                                         else num2 >= Integer'First - num1) then
                                           
+                                       pragma Assert(L=Unlocked);
                                        --body
                                        MyStack.Push(MS, num1+num2);
                                           
@@ -243,6 +253,7 @@ begin
                                     if (if num2 >= 0 then num1 >= Integer'First + num2
                                         else num1 <= Integer'Last + num2) then
                                           
+                                       pragma Assert(L=Unlocked);
                                        --body of the operation
                                        MyStack.Push(MS, num1 - num2);
                                           
@@ -273,11 +284,18 @@ begin
                                     MyStack.Pop(MS, num1);
                                     MyStack.Pop(MS, num2);
                                     
-                                    if (if num1 = 0 then True
-                                        elsif num1 = -1 then num2 /= Integer'First
-                                        elsif num1 > 0 then ((num2 >= Integer'First / num1) and (num2 <= Integer'Last / num1))
-                                        else ((num2 >= Integer'Last / num1) and (num2 <= Integer'First / num1))) then
+                                    --if (if num1 = 0 then True
+                                    --elsif num1 = -1 then num2 /= Integer'First
+                                    --elsif num1 > 0 then ((num2 >= Integer'First / num1) and (num2 <= Integer'Last / num1))
+                                    --else ((num2 >= Integer'Last / num1) and (num2 <= Integer'First / num1))) then
+                                    if( if num1 > 0 and num2 > 0 then num1 >= (Integer'First+1)/num2 and num1 <= Integer'Last/num2
+                                       elsif num1 >= 0 and num2 < 0 then num1 <= (Integer'First+1)/num2 and num1 >= Integer'Last/num2
+                                       elsif num1 < 0 and num2 >= 0 then num2 <= (Integer'First+1)/num1 and num2 >= Integer'Last/num1
+                                       elsif num1 < 0 and num2 < 0 then num1 <= (Integer'First+1)/num2 and num1 >= Integer'Last/num2
+                                       elsif num1 = 0 or num2 = 0 then True) then
                                        
+                                       
+                                       pragma Assert(L=Unlocked);
                                        --body of the operation
                                        MyStack.Push(MS, num1 * num2);
                                           
@@ -311,6 +329,7 @@ begin
                                     if (num2 /= 0 and
                                           (if num1 = Integer'First then num2/=-1)) then
                                           
+                                       pragma Assert(L=Unlocked);
                                        --body of the operation
                                        MyStack.Push(MS, num1 / num2);
                                           
@@ -339,6 +358,9 @@ begin
                                        varName : VariableStore.Variable := VariableStore.From_String(Lines.To_String(VAR));
                                        varValue: Integer;
                                     begin
+                                       
+                                       pragma Assert(L=Unlocked);
+                                       --body
                                        MyStack.Pop(MS, varValue);
                                        VariableStore.Put(DB,varName,varValue);
                                     end;
@@ -366,6 +388,7 @@ begin
                                  begin
                                     if MyStack.Size(MS) < 512 and VariableStore.Has_Variable(DB,varName) then -- check precondition
                                        
+                                       pragma Assert(L=Unlocked);
                                        --body
                                        varValue := VariableStore.Get(DB,varName);
                                        MyStack.Push(MS, varValue);
@@ -389,6 +412,7 @@ begin
                         if NumTokens = 1 then -- check valid NumTokens
                            if L = Unlocked then -- check lock state
                               
+                              pragma Assert(L=Unlocked);
                               -- body 
                               VariableStore.Print(DB);
                               
@@ -409,6 +433,7 @@ begin
                                  begin
                                     if VariableStore.Has_Variable(DB,varName) then -- check precondition
                                        
+                                       pragma Assert(L=Unlocked);
                                        --body
                                        VariableStore.Remove(DB,varName);
                                          
@@ -434,4 +459,3 @@ begin
       
    end if;
 end Main;
-
