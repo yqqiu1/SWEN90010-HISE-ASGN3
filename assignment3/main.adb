@@ -17,37 +17,37 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
 procedure Main is
    
-   Max_Var_Name_length : Integer := 1024;
+   -- Data Structures
+            package Lines is new MyString(Max_MyString_Length => 2048+1);
+            InputLine : Lines.MyString;
+   
    DB  : VariableStore.Database;
    
-   
-   Max_Stack_Size : Integer := 512;
-   package MyStack is new SimpleStack(Max_Stack_Size,Integer,0);
+   package MyStack is new SimpleStack(512,Integer,0);
    MS  : MyStack.SimpleStack;
    
    
-   Max_Command_Length : Integer := 2048;
-   package Lines is new MyString(Max_MyString_Length => Max_Command_Length+1);
-   S  : Lines.MyString;
-   
-   
-   
    type LockState is (Locked, Unlocked);
-   L :LockState := Unlocked;
-   PIN1 : PIN.PIN := PIN.From_String("1234");
+   L :LockState ;
+   MasterPin : PIN.PIN ;
+   
    
    
    function IsNumber (S:String) return Boolean is
    begin
       return (for all I in S'Range => 
-                 S(I) >= '0' and S(I) <= '9');
+                S(I) >= '0' and S(I) <= '9');
    end IsNumber;
+   
    
    function IsPin (S:String) return Boolean is
    begin
       return S'Length = 4 and IsNumber(S);
    end IsPin;
      
+   
+   
+   -- Loop control variable and function
    
    FlagInvalidInput: Boolean:= False;
    
@@ -59,286 +59,375 @@ procedure Main is
    
 begin
    
+   
    VariableStore.Init(DB);
    MyStack.Init(MS);
    
-   if MyCommandLine.Argument_Count = 1 then
-      if IsPin(MyCommandLine.Argument(1)) then
+   if (if MyCommandLine.Argument_Count = 1 then 
+          IsPin(MyCommandLine.Argument(1))) then
       
-         PIN1 := PIN.From_String(MyCommandLine.Argument(1));
-         L    := Locked;
+      MasterPin := PIN.From_String(MyCommandLine.Argument(1));
+      L         := Locked;
    
          
-         
-         while not FlagInvalidInput loop
-            declare
+      while not FlagInvalidInput loop
+         declare
                
-               T         : MyStringTokeniser.TokenArray(1..3) := (others => (Start => 1, Length => 0));
-               NumTokens : Natural;
+            T         : MyStringTokeniser.TokenArray(1..3) := (others => (Start => 1, Length => 0));
+            NumTokens : Natural;
+            OP        : Lines.MyString := Lines.From_String("");
+            VAR       : Lines.MyString := Lines.From_String("");
+            
+           
+         begin
                
-               function GetToken ( N:Integer ) return String is
-               begin
-                  MyStringTokeniser.Tokenise(Lines.To_String(S),T,NumTokens);
-                  if N<=NumTokens then
-                     return Lines.To_String(Lines.Substring(S,T(N).Start,T(N).Start+T(N).Length-1));
-                  else return "";
-                  end if;
-               end GetToken;
+            if L = Locked then Put("locked>");
+            else put("unlocked>");
+            end if;
                
-            begin
+            Lines.Get_Line(InputLine);
                
-               if L = Locked then Put("locked>");
-               else put("unlocked>");
+            if Lines.length(InputLine) > 2048 then
+                  
+               RaiseInvalidFlag("Invalid Input : Get an input line longer than" & Integer'Image(2048) & " characters.");
+                  
+            else
+               MyStringTokeniser.Tokenise(Lines.To_String(InputLine),T,NumTokens);
+               
+               if NumTokens > 0 then
+                  OP  := Lines.Substring(InputLine,T(1).Start,T(1).Start+T(1).Length-1);
+               end if; 
+               if NumTokens > 1 then
+                  VAR := Lines.Substring(InputLine,T(2).Start,T(2).Start+T(2).Length-1);
                end if;
                
-               Lines.Get_Line(S);
                
-               if Lines.length(S) > Max_Command_Length then
-                  
-                  RaiseInvalidFlag("Invalid Input : Get an input line longer than" & Integer'Image(Max_Command_Length) & " characters.");
-                  
-               else
-                  
-                  MyStringTokeniser.Tokenise(Lines.To_String(S),T,NumTokens);
-                  
-                  if NumTokens > 0 then
-                     -- for each operation 
-                     -- check valid (numtokens and variable type)
-                     -- check lock state
-                     -- check operation pre condition
-                     -- body
+               
+               if NumTokens > 0 then
+
+                  if Lines.To_String(OP) = "lock" then
+                     
+                     -- check valid                   
+                     if (if NumTokens = 2 then IsNumber(Lines.To_String(VAR))) then 
                         
-                     if GetToken(1) = "lock" then
-                                                   
-                        if NumTokens = 2 then -- check valid NumTokens
-                           if IsNumber(GetToken(2)) then -- check valid var: if is <NUMBER>
-                              if L = Unlocked and IsPin(GetToken(2)) then -- check lock state & precondition
+                        -- check precondition
+                        if L = Unlocked and IsPin(Lines.To_String(VAR)) then 
                                  
-                                 --body
-                                 PIN1 := PIN.From_String(GetToken(2));
-                                 L    := Locked;
+                           --body
+                           MasterPin := PIN.From_String(Lines.To_String(VAR));
+                           L    := Locked;
                                  
-                              end if; --otherwise do nothing
-                           else
-                              RaiseInvalidFlag("Invalid Input : Not a number.");
+                        end if; 
+                        
+                     else
+                        RaiseInvalidFlag("Invalid Input.");
+                     end if;
+                     
+                        
+                        
+                  elsif Lines.To_String(OP) = "unlock" then
+                     
+                     -- check valid 
+                     if (if NumTokens = 2 then IsNumber(Lines.To_String(VAR))) then 
+                        
+                        -- check precondition
+                        if L = Locked and IsPin(Lines.To_String(VAR)) then 
+                                 
+                           --body
+                           if PIN."="(MasterPin,PIN.From_String(Lines.To_String(VAR))) then 
+                              L:= Unlocked;
                            end if;
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
-                             
+
+                        end if; 
+                        
+                     else
+                        RaiseInvalidFlag("Invalid Input.");
+                     end if;
                         
                         
-                     elsif GetToken(1) = "unlock" then
+                        
+                  elsif Lines.To_String(OP) = "push" then
+                     
+                     -- check valid 
+                     if NumTokens = 2 then 
+                        
+                        -- check precondition
+                        if L = Unlocked and MyStack.Size(MS) < 512 then 
                            
-                        if NumTokens = 2 then -- check valid NumTokens
-                           if IsNumber(GetToken(2)) then -- check valid var: if is a <NUMBER>
-                              if L = Locked and IsPin(GetToken(2)) then -- check lock state & precondition
-                                 
-                                 --body
-                                 if PIN."="(PIN1,PIN.From_String(GetToken(2))) then 
-                                 
-                                    L:= Unlocked;
+                           --body
+                           MyStack.Push(MS, StringToInteger.From_String(Lines.To_String(VAR)));
+                           
+                        else
+                           if not (L = Unlocked) then Put_Line("Stack Full.");end if;
+                        end if;
+                        
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
+                        
+                     
+                        
+                  elsif Lines.To_String(OP) = "pop" then
+                        
+                     -- check valid
+                     if NumTokens = 1 then 
+                           
+                        -- check precondition
+                        if L = Unlocked and MyStack.Size(MS) > 0 then
+                           declare
+                              outputNumber : Integer;
+                           begin
+                              MyStack.Pop(MS, outputNumber);
+                              Put_Line(outputNumber'Image);
+                           end;
+                        else
+                           if not (L = Unlocked) then Put_Line("Stack Empty.");end if; 
+                        end if;
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
+                        
+                     
+                        
+                  elsif Lines.To_String(OP) = "+" then
+                     
+                     -- check valid NumTokens
+                     if NumTokens = 1 then 
+                        
+                        if L = Unlocked then -- check lock state
+                           
+                           if MyStack.Size(MS) > 1 then -- check precondition
+                              declare
+                                 num1 : Integer;
+                                 num2 : Integer;
+                              begin
+                                 MyStack.Pop(MS, num1);
+                                 MyStack.Pop(MS, num2);
+                                    
+                                 if (if num1 >= 0 then num2 <= Integer'Last - num1
+                                     else num2 >= Integer'First - num1) then
+                                          
+                                    --body
+                                    MyStack.Push(MS, num1+num2);
+                                          
+                                 else
+                                    Put_Line("Overflow.");
                                  end if;
                                  
-                              end if; --otherwise: the pin is not correct, do nothing.
+                              end;
                            else
-                              RaiseInvalidFlag("Invalid Input : Not a number.");
+                              Put_Line("Not enough variables for caculation.");
                            end if;
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
+                        end if; 
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
                         
                         
                         
-                     elsif GetToken(1) = "push" then
+                  elsif Lines.To_String(OP) = "-" then
                         
-                        if NumTokens = 2 then -- check valid NumTokens
-                           if L = Unlocked then -- check lock state
-                              if MyStack.Size(MS) < Max_Stack_Size then -- check precondition
-                                 MyStack.Push(MS, StringToInteger.From_String(GetToken(2)));
-                              else
-                                 Put_Line("Stack Full.");
-                              end if;
-                           end if; --otherwise: locked state, do nothing
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
+                     if NumTokens = 1 then -- check valid NumTokens
+                        if L = Unlocked then -- check lock state
+                           if MyStack.Size(MS) > 1 then -- check precondition
+                              declare
+                                 num1 : Integer;
+                                 num2 : Integer;
+                              begin
+                                 MyStack.Pop(MS, num1);
+                                 MyStack.Pop(MS, num2);
+                                    
+                                 if (if num1 >= 0 then num2 <= Integer'First + num1
+                                     else num2 >= Integer'Last + num1) then
+                                          
+                                    --body of the operation
+                                    MyStack.Push(MS, num1 - num2);
+                                          
+                                 else
+                                    Put_Line("Overflow.");
+                                 end if;
+                                 
+                              end;
+                           else
+                              Put_Line("Not enough variables for caculation.");
+                           end if;
+                        end if; 
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
                         
                         
                         
-                     elsif GetToken(1) = "pop" then
+                  elsif Lines.To_String(OP) = "*" then
                         
-                        if NumTokens = 1 then -- check valid NumTokens
+                     if NumTokens = 1 then -- check valid NumTokens
+                        if L = Unlocked then -- check lock state
+                           if MyStack.Size(MS) > 1 then -- check precondition
+                              declare
+                                 num1 : Integer;
+                                 num2 : Integer;
+                              begin
+                                 MyStack.Pop(MS, num1);
+                                 MyStack.Pop(MS, num2);
+                                    
+                                 if (if num1 = 0 then True
+                                     elsif num1 = -1 then num2 /= Integer'First
+                                     elsif num1 > 0 then (num2 >= Integer'First / num1 and num2 <= Integer'Last / num1)
+                                     else (num2 >= Integer'Last / num1 and num2 <= Integer'First / num1)) then
+                                       
+                                    --body of the operation
+                                    MyStack.Push(MS, num1 * num2);
+                                          
+                                 else
+                                    Put_Line("Overflow.");
+                                 end if;
+                                 
+                              end;
+                           else
+                              Put_Line("Not enough variables for caculation.");
+                           end if;
+                        end if; 
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
+                        
+                        
+                        
+                  elsif Lines.To_String(OP) = "/" then
+                        
+                     if NumTokens = 1 then -- check valid NumTokens
+                        if L = Unlocked then -- check lock state
+                           if MyStack.Size(MS) > 1 then -- check precondition
+                              declare
+                                 num1 : Integer;
+                                 num2 : Integer;
+                              begin
+                                 MyStack.Pop(MS, num1);
+                                 MyStack.Pop(MS, num2);
+                                    
+                                 if (num2 /= 0 and
+                                       (if num1 = Integer'First then num2/=-1)) then
+                                          
+                                    --body of the operation
+                                    MyStack.Push(MS, num1 / num2);
+                                          
+                                 else
+                                    Put_Line("Overflow.");
+                                 end if;
+                                 
+                              end;
+                           else
+                              Put_Line("Not enough variables for caculation.");
+                           end if;
+                        end if; 
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
+                        
+                        
+                        
+                  elsif Lines.To_String(OP) = "store" then
+                        
+                     if NumTokens = 2 then -- check valid NumTokens
+                        if Lines.To_String(VAR)'Length <= 1024 then -- check valid
                            if L = Unlocked then -- check lock state
                               if MyStack.Size(MS) > 0 then -- check precondition
                                  declare
-                                    outputNumber : Integer;
+                                    varName : VariableStore.Variable := VariableStore.From_String(Lines.To_String(VAR));
+                                    varValue: Integer;
                                  begin
-                                    MyStack.Pop(MS, outputNumber);
-                                    Put_Line(outputNumber'Image);
+                                    MyStack.Pop(MS, varValue);
+                                    VariableStore.Put(DB,varName,varValue);
                                  end;
                               else
                                  Put_Line("Stack Empty.");
                               end if;
-                           end if; --otherwise: locked state, do nothing
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                           end if; 
+                        else 
+                           RaiseInvalidFlag("Invalid Input : Variable name too long.");
                         end if;
-                        
-                        
-                        
-                     elsif GetToken(1) = "+" then
-                        
-                        if NumTokens = 1 then -- check valid NumTokens
-                           if L = Unlocked then -- check lock state
-                              if MyStack.Size(MS) > 1 then -- check precondition
-                                 declare
-                                    num1 : Integer;
-                                    num2 : Integer;
-                                 begin
-                                    MyStack.Pop(MS, num1);
-                                    MyStack.Pop(MS, num2);
-                                    
-                                    if (if num1 >= 0 then num2 <= Integer'Last - num1
-                                        else num2 >= Integer'First - num1) then
-                                          
-                                       --body of the operation
-                                       MyStack.Push(MS, num1+num2);
-                                          
-                                    else
-                                       Put_Line("Overflow.");
-                                    end if;
-                                 
-                                 end;
-                              else
-                                 Put_Line("Not enough variables for caculation.");
-                              end if;
-                           end if; --otherwise: locked state, do nothing
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
-                        
-                        
-                        
-                     elsif GetToken(1) = "-" then
-                        Put_Line("TO DO: -");
-                        
-                        
-                        
-                     elsif GetToken(1) = "*" then
-                        Put_Line("TO DO: *");
-                        
-                        
-                        
-                     elsif GetToken(1) = "/" then
-                        Put_Line("TO DO: /");
-                        
-                        
-                        
-                     elsif GetToken(1) = "store" then
-                        
-                        if NumTokens = 2 then -- check valid NumTokens
-                           if GetToken(2)'Length <= Max_Var_Name_length then -- check valid
-                              if L = Unlocked then -- check lock state
-                                 if MyStack.Size(MS) > 0 then -- check precondition
-                                    declare
-                                       varName : VariableStore.Variable := VariableStore.From_String(GetToken(2));
-                                       varValue: Integer;
-                                    begin
-                                       MyStack.Pop(MS, varValue);
-                                       VariableStore.Put(DB,varName,varValue);
-                                    end;
-                                 else
-                                    Put_Line("Stack Empty.");
-                                 end if;
-                              end if; --otherwise: locked state, do nothing
-                           else 
-                              RaiseInvalidFlag("Invalid Input : Variable name too long.");
-                           end if;
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
-                        
-                        
-                        
-                     elsif GetToken(1) = "load" then
-                        
-                        if NumTokens = 2 then -- check valid NumTokens
-                           if GetToken(2)'Length <= Max_Var_Name_length then -- check valid
-                              if L = Unlocked then -- check lock state
-                                 declare
-                                    varName : VariableStore.Variable := VariableStore.From_String(GetToken(2));
-                                    varValue: Integer;
-                                 begin
-                                    if MyStack.Size(MS) < Max_Stack_Size and VariableStore.Has_Variable(DB,varName) then -- check precondition
-                                       
-                                       --body
-                                       varValue := VariableStore.Get(DB,varName);
-                                       MyStack.Push(MS, varValue);
-                                         
-                                    else
-                                       Put_Line("Stack full or No such variable.");
-                                    end if;
-                                 end;
-                              end if; --otherwise: locked state, do nothing
-                           else 
-                              RaiseInvalidFlag("Invalid Input : Variable name too long.");
-                           end if;
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
-                        
-                        
-                        
-                     elsif GetToken(1) = "list" then
-                        
-                        if NumTokens = 1 then -- check valid NumTokens
-                           if L = Unlocked then -- check lock state
-                              
-                              -- body 
-                              VariableStore.Print(DB);
-                              
-                           end if; --otherwise: locked state, do nothing
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
-                        
-                        
-                        
-                     elsif GetToken(1) = "remove" then
-                        
-                        if NumTokens = 2 then -- check valid NumTokens
-                           if GetToken(2)'Length <= Max_Var_Name_length then -- check valid
-                              if L = Unlocked then -- check lock state
-                                 declare
-                                    varName : VariableStore.Variable := VariableStore.From_String(GetToken(2));
-                                 begin
-                                    if VariableStore.Has_Variable(DB,varName) then -- check precondition
-                                       
-                                       --body
-                                       VariableStore.Remove(DB,varName);
-                                         
-                                    else
-                                       Put_Line("No such variable.");
-                                    end if;
-                                 end;
-                              end if; --otherwise: locked state, do nothing
-                           else 
-                              RaiseInvalidFlag("Invalid Input : Variable name too long.");
-                           end if;
-                        else
-                           RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
-                        end if;
-                        
-                        
-                        
                      else
-                        RaiseInvalidFlag("Invalid Input : No such command: " & getToken(1) & ".");
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
                      end if;
+                        
+                        
+                        
+                  elsif Lines.To_String(OP) = "load" then
+                        
+                     if NumTokens = 2 then -- check valid NumTokens
+                        if Lines.To_String(VAR)'Length <= 1024 then -- check valid
+                           if L = Unlocked then -- check lock state
+                              declare
+                                 varName : VariableStore.Variable := VariableStore.From_String(Lines.To_String(VAR));
+                                 varValue: Integer;
+                              begin
+                                 if MyStack.Size(MS) < 512 and VariableStore.Has_Variable(DB,varName) then -- check precondition
+                                       
+                                    --body
+                                    varValue := VariableStore.Get(DB,varName);
+                                    MyStack.Push(MS, varValue);
+                                         
+                                 else
+                                    Put_Line("Stack full or No such variable.");
+                                 end if;
+                              end;
+                           end if; 
+                        else 
+                           RaiseInvalidFlag("Invalid Input : Variable name too long.");
+                        end if;
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
+                        
+                        
+                        
+                  elsif Lines.To_String(OP) = "list" then
+                        
+                     if NumTokens = 1 then -- check valid NumTokens
+                        if L = Unlocked then -- check lock state
+                              
+                           -- body 
+                           VariableStore.Print(DB);
+                              
+                        end if; 
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
+                        
+                        
+                        
+                  elsif Lines.To_String(OP) = "remove" then
+                        
+                     if NumTokens = 2 then -- check valid NumTokens
+                        if Lines.To_String(VAR)'Length <= 1024 then -- check valid
+                           if L = Unlocked then -- check lock state
+                              declare
+                                 varName : VariableStore.Variable := VariableStore.From_String(Lines.To_String(VAR));
+                              begin
+                                 if VariableStore.Has_Variable(DB,varName) then -- check precondition
+                                       
+                                    --body
+                                    VariableStore.Remove(DB,varName);
+                                         
+                                 else
+                                    Put_Line("No such variable.");
+                                 end if;
+                              end;
+                           end if;
+                        else 
+                           RaiseInvalidFlag("Invalid Input : Variable name too long.");
+                        end if;
+                     else
+                        RaiseInvalidFlag("Invalid Input : Wrong number of tokens.");
+                     end if;
+                  else
+                     RaiseInvalidFlag("Invalid Input : No such command: " & Lines.To_String(OP) & ".");
                   end if;
                end if;
-            end;
-         end loop;
-      end if;
+            end if;
+         end;
+      end loop;
+       
    end if;
 end Main;
+
