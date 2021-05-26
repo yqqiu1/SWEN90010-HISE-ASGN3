@@ -1,3 +1,22 @@
+-- Author 
+-- Yu Qiu           (1015528) yqqiu1@student.unimelb.edu.au
+-- Tan Khanh Nguyen (724340)  tann5@student.unimelb.edu.au
+
+--The security properties that we proved of our implementation include 
+
+--   lock operations can only ever be performed when the calculator is in the 
+--   unlocked state.
+--2) The Unlock operation can only ever be performed when the calculator is in 
+--   the locked state.
+--3) The Lock operation, when it is performed, can update the master PIN with 
+--   the new PIN that is supplied.
+--
+--For the first two properties, we have an assertion before the execution of 
+--every operation to verify the lock state, so that we can prove the operations
+--only be performed in certain lock state.
+--For the third one, after the lock operation we have an assertion to detect 
+--whether the new master PIN equal to the provided 4-digit code.
+
 pragma SPARK_Mode (On);
 
 with StringToInteger;
